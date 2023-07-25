@@ -1,4 +1,5 @@
-from typing import Callable
+from contextlib import contextmanager
+from typing import Callable, Iterable
 
 import torch
 import torch.nn as nn
@@ -28,33 +29,29 @@ class RebarModel(nn.Module):
         def loss_fn(x: torch.Tensor):
             return output_loss_fn(self.decoder(x))
 
-        for param in self.decoder.parameters():
-            param.requires_grad_(False)
+        with toggle_grads(self.decoder.parameters(), False):
+            enc_out = self.encoder(inputs)
+            u1 = torch.rand_like(enc_out)
+            u2 = torch.rand_like(enc_out)
 
-        enc_out = self.encoder(inputs)
-        u1 = torch.rand_like(enc_out)
-        u2 = torch.rand_like(enc_out)
+            # Get gradients for both the encoder and the decoder.
+            reinforce = reinforce_losses(u1=u1, pre_logits=enc_out, loss_fn=loss_fn)
+            reinforce.mean().backward(retain_graph=True)
 
-        # Get gradients for both the encoder and the decoder.
-        reinforce = reinforce_losses(u1=u1, pre_logits=enc_out, loss_fn=loss_fn)
-        reinforce.mean().backward(retain_graph=True)
+            control = control_variate_losses(
+                u1=u1,
+                u2=u2,
+                pre_logits=enc_out,
+                loss_fn=loss_fn,
+                lam=self.lam_arg.exp().detach(),
+            )
+            grads = torch.autograd.grad(control.mean(), list(self.encoder.parameters()))
+            for param, grad, eta in zip(
+                self.encoder.parameters(), grads, self.eta_arg.detach().sigmoid() * 2
+            ):
+                param.grad.add_(grad * eta)
 
-        control = control_variate_losses(
-            u1=u1,
-            u2=u2,
-            pre_logits=enc_out,
-            loss_fn=loss_fn,
-            lam=self.lam_arg.exp().detach(),
-        )
-        grads = torch.autograd.grad(control.mean(), list(self.encoder.parameters()))
-        for param, grad, eta in zip(
-            self.encoder.parameters(), grads, self.eta_arg.detach().sigmoid() * 2
-        ):
-            param.grad.add_(grad * eta)
-
-        for param in self.decoder.parameters():
-            param.requires_grad_(True)
-
+        # This generates gradients for both encoder and decoder
         hard_out = hard_threshold(gumbel(u1=u1, pre_logits=enc_out))
         dec_loss = loss_fn(hard_out)
         dec_loss.backward()
@@ -65,3 +62,17 @@ class RebarModel(nn.Module):
         output_loss_fn: Callable[[torch.Tensor], torch.Tensor],
     ) -> torch.Tensor:
         pass
+
+
+@contextmanager
+def toggle_grads(params: Iterable[nn.Parameter], enabled: bool):
+    params = list(params)
+    backups = []
+    for p in params:
+        backups.append(p.requires_grad)
+        p.requires_grad_(enabled)
+    try:
+        yield
+    finally:
+        for p, backup in zip(params, backups):
+            p.requires_grad_(backup)
