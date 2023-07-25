@@ -58,3 +58,10 @@ class RebarModel(nn.Module):
         hard_out = hard_threshold(gumbel(u1=u1, pre_logits=enc_out))
         dec_loss = loss_fn(hard_out)
         dec_loss.backward()
+
+    def variance(
+        self,
+        inputs: torch.Tensor,
+        output_loss_fn: Callable[[torch.Tensor], torch.Tensor],
+    ) -> torch.Tensor:
+        pass
