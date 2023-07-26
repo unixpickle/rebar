@@ -1,4 +1,5 @@
 import argparse
+import json
 import warnings
 from collections import defaultdict
 from random import sample
@@ -94,7 +95,7 @@ def main():
         print(f"{epoch=} {variance=} {loss=}")
 
     if args.log_path:
-        np.savez(args.log_path, **train_log)
+        np.savez(args.log_path, train_args=json.dumps(args.__dict__), **train_log)
 
 
 def data_loader(bs: int, train: bool) -> DataLoader:
