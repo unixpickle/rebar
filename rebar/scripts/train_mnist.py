@@ -17,6 +17,8 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--lr", default=1e-4)
     parser.add_argument("--cv_lr", default=1e-2)
+    parser.add_argument("--init_eta", default=1.0)
+    parser.add_argument("--init_lam", default=0.1)
     parser.add_argument("--batch_size", type=int, default=64)
     parser.add_argument("--variance_batch_size", type=int, default=4)
     parser.add_argument("--n_latent", type=int, default=32)
@@ -43,6 +45,8 @@ def main():
             d_emb=4,
             device=device,
         ),
+        init_eta=args.init_eta,
+        init_lam=args.init_lam,
     )
 
     opt = Adam(

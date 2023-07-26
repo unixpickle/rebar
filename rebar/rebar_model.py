@@ -10,13 +10,24 @@ from .rebar import control_variate_losses, gumbel, hard_threshold, reinforce_los
 
 
 class RebarModel(nn.Module):
-    def __init__(self, encoder: Encoder, decoder: Decoder, init_lam: float = 0.1):
+    def __init__(
+        self,
+        encoder: Encoder,
+        decoder: Decoder,
+        init_eta: float = 1.0,
+        init_lam: float = 0.1,
+    ):
         super().__init__()
+        assert init_eta > 0 and init_eta < 2
+        assert init_lam > 0
         self.encoder = encoder
         self.decoder = decoder
         self.device = encoder.device
         self.eta_arg = nn.Parameter(
-            torch.zeros(len(list(encoder.parameters())), device=self.device)
+            torch.logit(
+                torch.zeros(len(list(encoder.parameters())), device=self.device)
+                + init_eta / 2,
+            )
         )
         self.lam_arg = nn.Parameter(
             torch.log(torch.zeros((), device=self.device) + init_lam)
