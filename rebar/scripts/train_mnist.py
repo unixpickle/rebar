@@ -16,7 +16,9 @@ from rebar.rebar_model import RebarModel
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--lr", default=1e-4)
+    parser.add_argument("--cv_lr", default=1e-2)
     parser.add_argument("--batch_size", type=int, default=64)
+    parser.add_argument("--variance_batch_size", type=int, default=4)
     parser.add_argument("--n_latent", type=int, default=32)
     parser.add_argument("--n_vocab", type=int, default=64)
     args = parser.parse_args()
@@ -43,7 +45,17 @@ def main():
         ),
     )
 
-    opt = Adam(model.parameters(), lr=args.lr)
+    opt = Adam(
+        [
+            dict(
+                params=(
+                    list(model.encoder.parameters()) + list(model.decoder.parameters())
+                ),
+                lr=args.lr,
+            ),
+            dict(params=[model.eta_arg, model.lam_arg], lr=args.cv_lr),
+        ],
+    )
     for epoch in range(10):
         losses = []
         variances = []
@@ -52,7 +64,10 @@ def main():
             opt.zero_grad()
             hard_losses = model.backward(batch, lambda x: (x - batch).pow(2).mean(1))
 
-            variance = model.variance(batch, lambda x: (x - batch).pow(2).mean(1))
+            var_batch = batch[torch.randperm(len(batch))[: args.variance_batch_size]]
+            variance = model.variance(
+                var_batch, lambda x: (x - var_batch).pow(2).mean(1)
+            )
             variance.backward()
 
             for name, p in model.named_parameters():
