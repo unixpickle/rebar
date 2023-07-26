@@ -55,7 +55,7 @@ def reinforce_losses(
 
 def gumbel(u1: torch.Tensor, pre_logits: torch.Tensor):
     log_probs = F.log_softmax(pre_logits, dim=-1)
-    return log_probs - (-u1.log()).log()
+    return log_probs - safe_log(-safe_log(u1))
 
 
 def hard_threshold(gumbel_out: torch.Tensor) -> torch.Tensor:
@@ -80,14 +80,18 @@ def conditional_gumbel_logits(
     """
     mask = maxes.bool()
     log_probs = F.log_softmax(pre_logits, dim=-1)
-    logs = u2.log()
+    logs = safe_log(u2)
     log_vk = logs.gather(-1, maxes.argmax(-1, keepdim=True))
 
-    term1 = (-logs).log()
+    term1 = safe_log(-logs)
 
     # -(-logs / probs - log_vk).log()
     left = term1 - log_probs
-    right = (-log_vk).log()
+    right = safe_log(-log_vk)
     term2 = torch.logsumexp(torch.stack([left, right.expand_as(left)]), dim=0)
 
     return torch.where(mask, -term1, -term2)
+
+
+def safe_log(xs: torch.Tensor) -> torch.Tensor:
+    return torch.log(torch.where(xs < 1e-8, 1, xs))
