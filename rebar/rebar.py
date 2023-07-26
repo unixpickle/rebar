@@ -79,7 +79,15 @@ def conditional_gumbel_logits(
     :param pre_logits: the same argument passed to gumbel().
     """
     mask = maxes.bool()
-    probs = F.softmax(pre_logits, dim=-1)
+    log_probs = F.log_softmax(pre_logits, dim=-1)
     logs = u2.log()
     log_vk = logs.gather(-1, maxes.argmax(-1, keepdim=True))
-    return torch.where(mask, -(-logs).log(), -(-logs / probs - log_vk).log())
+
+    term1 = (-logs).log()
+
+    # -(-logs / probs - log_vk).log()
+    left = term1 - log_probs
+    right = (-log_vk).log()
+    term2 = torch.logsumexp(torch.stack([left, right.expand_as(left)]), dim=0)
+
+    return torch.where(mask, -term1, -term2)
