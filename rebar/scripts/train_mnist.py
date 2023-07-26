@@ -15,10 +15,10 @@ from rebar.rebar_model import RebarModel
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--lr", default=1e-4)
-    parser.add_argument("--cv_lr", default=1e-2)
-    parser.add_argument("--init_eta", default=1.0)
-    parser.add_argument("--init_lam", default=0.1)
+    parser.add_argument("--lr", type=float, default=1e-4)
+    parser.add_argument("--cv_lr", type=float, default=1e-2)
+    parser.add_argument("--init_eta", type=float, default=1.0)
+    parser.add_argument("--init_lam", type=float, default=0.1)
     parser.add_argument("--batch_size", type=int, default=64)
     parser.add_argument("--variance_batch_size", type=int, default=4)
     parser.add_argument("--n_latent", type=int, default=32)
