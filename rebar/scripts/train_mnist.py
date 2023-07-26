@@ -1,5 +1,6 @@
 import argparse
 import warnings
+from random import sample
 
 import numpy as np
 import torch
@@ -23,6 +24,7 @@ def main():
     parser.add_argument("--variance_batch_size", type=int, default=4)
     parser.add_argument("--n_latent", type=int, default=32)
     parser.add_argument("--n_vocab", type=int, default=64)
+    parser.add_argument("--sample_baseline", action="store_true")
     args = parser.parse_args()
 
     train_loader = data_loader(args.batch_size, train=True)
@@ -47,6 +49,7 @@ def main():
         ),
         init_eta=args.init_eta,
         init_lam=args.init_lam,
+        sample_baseline=args.sample_baseline,
     )
 
     opt = Adam(

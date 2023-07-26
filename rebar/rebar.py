@@ -39,6 +39,7 @@ def reinforce_losses(
     u1: torch.Tensor,
     pre_logits: torch.Tensor,
     loss_fn: Callable[[torch.Tensor], torch.Tensor],
+    sample_baseline: bool = False,
 ) -> Tuple[torch.Tensor, torch.Tensor]:
     z = gumbel(u1, pre_logits)
     maxes = hard_threshold(z)
@@ -50,6 +51,8 @@ def reinforce_losses(
     )
     with torch.no_grad():
         loss = loss_fn(maxes)
+        if sample_baseline:
+            loss -= loss_fn(hard_threshold(gumbel(torch.rand_like(u1), pre_logits)))
     return loss * log_probs, loss
 
 

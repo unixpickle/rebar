@@ -1,4 +1,5 @@
 from contextlib import contextmanager
+from random import sample
 from typing import Callable, Iterable, List
 
 import torch
@@ -16,6 +17,7 @@ class RebarModel(nn.Module):
         decoder: Decoder,
         init_eta: float = 1.0,
         init_lam: float = 0.1,
+        sample_baseline: bool = False,
     ):
         super().__init__()
         assert init_eta > 0 and init_eta < 2
@@ -32,6 +34,7 @@ class RebarModel(nn.Module):
         self.lam_arg = nn.Parameter(
             torch.log(torch.zeros((), device=self.device) + init_lam)
         )
+        self.sample_baseline = sample_baseline
 
     def eta(self) -> torch.Tensor:
         return self.eta_arg.sigmoid() * 2
@@ -54,7 +57,10 @@ class RebarModel(nn.Module):
 
             # Get gradients for both the encoder and the decoder.
             reinforce, losses = reinforce_losses(
-                u1=u1, pre_logits=enc_out, loss_fn=loss_fn
+                u1=u1,
+                pre_logits=enc_out,
+                loss_fn=loss_fn,
+                sample_baseline=self.sample_baseline,
             )
             reinforce.mean().backward(retain_graph=True)
 
@@ -126,7 +132,10 @@ class RebarModel(nn.Module):
 
         # Get gradients for both the encoder and the decoder.
         reinforce, _losses = reinforce_losses(
-            u1=u1, pre_logits=enc_out, loss_fn=loss_fn
+            u1=u1,
+            pre_logits=enc_out,
+            loss_fn=loss_fn,
+            sample_baseline=self.sample_baseline,
         )
         reinforce_grads = torch.autograd.grad(
             reinforce.mean(),
