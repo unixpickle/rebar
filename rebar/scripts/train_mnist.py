@@ -23,20 +23,22 @@ def main():
     train_loader = data_loader(args.batch_size, train=True)
     # test_loader = data_loader(args.batch_size, train=False)
 
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
     model = RebarModel(
         encoder=MLPEncoder(
             channels=(28 * 28, 256),
             n_vocab=args.n_vocab,
             n_latent=args.n_latent,
             d_emb=4,
-            device=torch.device("cpu"),
+            device=device,
         ),
         decoder=MLPDecoder(
             channels=(256, 28 * 28),
             n_vocab=args.n_vocab,
             n_latent=args.n_latent,
             d_emb=4,
-            device=torch.device("cpu"),
+            device=device,
         ),
     )
 
@@ -45,7 +47,7 @@ def main():
         losses = []
         variances = []
         for xs, _ys in tqdm(train_loader):
-            batch = xs.flatten(1)
+            batch = xs.flatten(1).to(device)
             opt.zero_grad()
             hard_losses = model.backward(batch, lambda x: (x - batch).pow(2).mean(1))
 
