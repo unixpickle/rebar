@@ -1,4 +1,4 @@
-from typing import Callable
+from typing import Callable, Tuple
 
 import torch
 import torch.nn as nn
@@ -39,7 +39,7 @@ def reinforce_losses(
     u1: torch.Tensor,
     pre_logits: torch.Tensor,
     loss_fn: Callable[[torch.Tensor], torch.Tensor],
-) -> torch.Tensor:
+) -> Tuple[torch.Tensor, torch.Tensor]:
     z = gumbel(u1, pre_logits)
     maxes = hard_threshold(z)
     log_probs = (
@@ -50,7 +50,7 @@ def reinforce_losses(
     )
     with torch.no_grad():
         loss = loss_fn(maxes)
-    return loss * log_probs
+    return loss * log_probs, loss
 
 
 def gumbel(u1: torch.Tensor, pre_logits: torch.Tensor):

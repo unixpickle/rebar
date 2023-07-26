@@ -32,7 +32,7 @@ class RebarModel(nn.Module):
         self,
         inputs: torch.Tensor,
         output_loss_fn: Callable[[torch.Tensor], torch.Tensor],
-    ):
+    ) -> torch.Tensor:
         def loss_fn(x: torch.Tensor):
             return output_loss_fn(self.decoder(x))
 
@@ -42,7 +42,9 @@ class RebarModel(nn.Module):
             u2 = torch.rand_like(enc_out)
 
             # Get gradients for both the encoder and the decoder.
-            reinforce = reinforce_losses(u1=u1, pre_logits=enc_out, loss_fn=loss_fn)
+            reinforce, losses = reinforce_losses(
+                u1=u1, pre_logits=enc_out, loss_fn=loss_fn
+            )
             reinforce.mean().backward(retain_graph=True)
 
             control = control_variate_losses(
@@ -62,6 +64,8 @@ class RebarModel(nn.Module):
         hard_out = hard_threshold(gumbel(u1=u1, pre_logits=enc_out.detach()))
         dec_loss = loss_fn(hard_out)
         dec_loss.mean().backward()
+
+        return losses
 
     def variance(
         self,
@@ -100,7 +104,9 @@ class RebarModel(nn.Module):
         u2 = torch.rand_like(enc_out)
 
         # Get gradients for both the encoder and the decoder.
-        reinforce = reinforce_losses(u1=u1, pre_logits=enc_out, loss_fn=loss_fn)
+        reinforce, _losses = reinforce_losses(
+            u1=u1, pre_logits=enc_out, loss_fn=loss_fn
+        )
         reinforce_grads = torch.autograd.grad(
             reinforce.mean(),
             list(self.encoder.parameters()),
