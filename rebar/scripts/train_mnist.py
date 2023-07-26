@@ -1,5 +1,6 @@
 import argparse
 import warnings
+from collections import defaultdict
 from random import sample
 
 import numpy as np
@@ -25,6 +26,7 @@ def main():
     parser.add_argument("--n_latent", type=int, default=32)
     parser.add_argument("--n_vocab", type=int, default=64)
     parser.add_argument("--sample_baseline", action="store_true")
+    parser.add_argument("--log_path", default=None, type=str)
     args = parser.parse_args()
 
     train_loader = data_loader(args.batch_size, train=True)
@@ -63,6 +65,7 @@ def main():
             dict(params=[model.eta_arg, model.lam_arg], lr=args.cv_lr),
         ],
     )
+    train_log = defaultdict(list)
     for epoch in range(10):
         losses = []
         variances = []
@@ -84,9 +87,14 @@ def main():
             opt.step()
             losses.append(hard_losses.tolist())
             variances.append(variance.item())
+            train_log["variance"].append(variances[-1])
+            train_log["loss"].append(np.mean(losses[-1]))
         variance = np.mean(variances)
         loss = np.mean([x for y in losses for x in y])
         print(f"{epoch=} {variance=} {loss=}")
+
+    if args.log_path:
+        np.savez(args.log_path, **train_log)
 
 
 def data_loader(bs: int, train: bool) -> DataLoader:
