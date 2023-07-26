@@ -78,7 +78,7 @@ def main():
             losses.append(hard_losses.tolist())
             variances.append(variance.item())
         variance = np.mean(variances)
-        loss = np.mean(losses)
+        loss = np.mean([x for y in losses for x in y])
         print(f"{epoch=} {variance=} {loss=}")
 
 
