@@ -51,9 +51,12 @@ def reinforce_losses(
     )
     with torch.no_grad():
         loss = loss_fn(maxes)
+        coeff = loss
         if sample_baseline:
-            loss -= loss_fn(hard_threshold(gumbel(torch.rand_like(u1), pre_logits)))
-    return loss * log_probs, loss
+            coeff = coeff - loss_fn(
+                hard_threshold(gumbel(torch.rand_like(u1), pre_logits))
+            )
+    return coeff * log_probs, loss
 
 
 def gumbel(u1: torch.Tensor, pre_logits: torch.Tensor):
