@@ -34,6 +34,34 @@ def test_variance(dolambda: bool):
     ).abs().item() < 1e-3, f"{actual.item()=} {expected.item()=}"
 
 
+def test_unbiased():
+    torch.manual_seed(0)
+    n_samples = 10000
+
+    model = _testing_rebar_model()
+
+    batch = torch.randn(2, 10).repeat(n_samples, 1)
+    loss_fn = lambda x: (x - batch).pow(2).mean(1)
+    model.backward(batch, loss_fn)
+    with_rebar = torch.cat([x.grad.view(-1) for x in model.encoder.parameters()])
+    for p in model.encoder.parameters():
+        p.grad = None
+
+    torch.manual_seed(0)
+    with torch.no_grad():
+        model.eta_arg.fill_(-100)
+    model.backward(batch, loss_fn)
+    without_rebar = torch.cat([x.grad.view(-1) for x in model.encoder.parameters()])
+
+    noise = (with_rebar - without_rebar).pow(2).mean().item()
+    signal = with_rebar.pow(2).mean().item()
+    snr = signal / noise
+    assert snr > 2, f"{signal=}:{noise=} ratio not good enough"
+
+    cos_sim = torch.cosine_similarity(with_rebar, without_rebar, 0).item()
+    assert cos_sim > 0.95
+
+
 def _testing_rebar_model() -> RebarModel:
     return RebarModel(
         encoder=MLPEncoder(
@@ -42,4 +70,5 @@ def _testing_rebar_model() -> RebarModel:
         decoder=MLPDecoder(
             channels=(10,), n_vocab=8, n_latent=16, d_emb=4, device=torch.device("cpu")
         ),
+        init_lam=0.1,
     )

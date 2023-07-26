@@ -26,8 +26,8 @@ def control_variate_losses(
     log_probs = (
         F.log_softmax(pre_logits, dim=-1)
         .gather(-1, maxes.argmax(-1, keepdim=True))
-        .flatten(-1)
-        .sum(-1)
+        .flatten(1)
+        .sum(1)
     )
     z_tilde = conditional_gumbel_logits(u2, maxes, pre_logits)
     soft_out = loss_fn(soft_threshold(z, lam))

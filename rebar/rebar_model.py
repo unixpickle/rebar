@@ -61,7 +61,7 @@ class RebarModel(nn.Module):
         # This generates gradients for the decoder only
         hard_out = hard_threshold(gumbel(u1=u1, pre_logits=enc_out.detach()))
         dec_loss = loss_fn(hard_out)
-        dec_loss.backward()
+        dec_loss.mean().backward()
 
     def variance(
         self,

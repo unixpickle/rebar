@@ -19,8 +19,7 @@ class Decoder(nn.Module):
         nn.init.normal_(self.unemb.weight, std=1 / math.sqrt(n_latent))
 
     def unembed(self, x: torch.Tensor) -> torch.Tensor:
-        res = self.unemb(x.flatten(1))
-        return F.log_softmax(res, dim=-1)
+        return self.unemb(x.flatten(1))
 
 
 class MLPDecoder(Decoder):
