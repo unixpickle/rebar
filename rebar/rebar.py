@@ -45,8 +45,8 @@ def reinforce_losses(
     log_probs = (
         F.log_softmax(pre_logits, dim=-1)
         .gather(-1, maxes.argmax(-1, keepdim=True))
-        .flatten(-1)
-        .sum(-1)
+        .flatten(1)
+        .sum(1)
     )
     with torch.no_grad():
         loss = loss_fn(maxes)

@@ -10,6 +10,7 @@ class Encoder(nn.Module):
     def __init__(
         self, *, n_vocab: int, n_latent: int, d_emb: int, device: torch.device
     ):
+        super().__init__()
         self.n_vocab = n_vocab
         self.n_latent = n_latent
         self.d_emb = d_emb
@@ -21,7 +22,7 @@ class Encoder(nn.Module):
         return Categorical(logits=res)
 
 
-class MLPEncoder(nn.Module):
+class MLPEncoder(Encoder):
     def __init__(self, *, channels: Sequence[int], **kwargs):
         super().__init__(**kwargs)
         layers = []
