@@ -1,4 +1,5 @@
 import argparse
+import warnings
 
 import numpy as np
 import torch
@@ -53,6 +54,10 @@ def main():
 
             variance = model.variance(batch, lambda x: (x - batch).pow(2).mean(1))
             variance.backward()
+
+            for name, p in model.named_parameters():
+                if not p.grad.isfinite().all().item():
+                    warnings.warn(f"{name} grad is not finite")
 
             opt.step()
             losses.append(hard_losses.tolist())
