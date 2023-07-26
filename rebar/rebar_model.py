@@ -91,7 +91,17 @@ class RebarModel(nn.Module):
         result = 0.0
         for gs in all_grads:
             result = result + torch.stack(gs).flatten(1).var(0).sum()
-        return result
+
+        # Block gradients to main parameters.
+        if self.lam_arg.requires_grad:
+            eta_grad, lam_grad = torch.autograd.grad(
+                result, [self.eta_arg, self.lam_arg]
+            )
+            raw_dot = (self.eta_arg * eta_grad).sum() + (self.lam_arg * lam_grad)
+        else:
+            (eta_grad,) = torch.autograd.grad(result, [self.eta_arg])
+            raw_dot = (self.eta_arg * eta_grad).sum()
+        return result.detach() + (raw_dot - raw_dot.detach())
 
     def _encoder_grads(
         self,
