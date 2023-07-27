@@ -1,6 +1,6 @@
 from contextlib import contextmanager
 from random import sample
-from typing import Callable, Iterable, List
+from typing import Callable, Iterable, List, Tuple
 
 import torch
 import torch.nn as nn
@@ -84,13 +84,13 @@ class RebarModel(nn.Module):
 
         return losses
 
-    def variance(
+    def variance_backward(
         self,
         inputs: torch.Tensor,
         output_loss_fn: Callable[[torch.Tensor], torch.Tensor],
     ) -> torch.Tensor:
         """
-        Compute the variance with gradients to the etas and lambda.
+        Compute the gradients of the variance w.r.t. the etas and lambda.
         If self.lam_arg does not require grad, then second derivatives will not
         be required for the computation.
         """
@@ -114,11 +114,12 @@ class RebarModel(nn.Module):
             eta_grad, lam_grad = torch.autograd.grad(
                 result, [self.eta_arg, self.lam_arg]
             )
-            raw_dot = (self.eta_arg * eta_grad).sum() + (self.lam_arg * lam_grad)
+            self.eta_arg.backward(gradient=eta_grad)
+            self.lam_arg.backward(gradient=lam_grad)
         else:
             (eta_grad,) = torch.autograd.grad(result, [self.eta_arg])
-            raw_dot = (self.eta_arg * eta_grad).sum()
-        return result.detach() + (raw_dot - raw_dot.detach())
+            self.eta_arg.backward(eta_grad)
+        return result.detach()
 
     def _encoder_grads(
         self,

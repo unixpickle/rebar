@@ -14,7 +14,7 @@ def test_variance(dolambda: bool):
     batch = torch.randn(100, 10)
     loss_fn = lambda x: (x - batch).pow(2).mean(1)
     torch.manual_seed(0)
-    actual = model.variance(batch, loss_fn).detach()
+    actual = model.variance_backward(batch, loss_fn).detach()
 
     torch.manual_seed(0)
     gradients = []

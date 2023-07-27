@@ -76,10 +76,9 @@ def main():
             hard_losses = model.backward(batch, lambda x: (x - batch).pow(2).mean(1))
 
             var_batch = batch[torch.randperm(len(batch))[: args.variance_batch_size]]
-            variance = model.variance(
+            variance = model.variance_backward(
                 var_batch, lambda x: (x - var_batch).pow(2).mean(1)
             )
-            variance.backward()
 
             for name, p in model.named_parameters():
                 if not p.grad.isfinite().all().item():
