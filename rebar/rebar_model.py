@@ -55,7 +55,7 @@ class RebarModel(nn.Module):
             dist = self.encoder(inputs)
             entropies = dist.entropy().flatten(1).sum(1)
             if entropy_coeff:
-                entropies.mean().backward(retain_graph=True)
+                (entropies * entropy_coeff).mean().backward(retain_graph=True)
             enc_out = dist.logits
             u1 = torch.rand_like(enc_out)
             u2 = torch.rand_like(enc_out)
