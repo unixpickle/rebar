@@ -27,6 +27,7 @@ def main():
     parser.add_argument("--variance_batch_size", type=int, default=4)
     parser.add_argument("--n_latent", type=int, default=32)
     parser.add_argument("--n_vocab", type=int, default=64)
+    parser.add_argument("--d_emb", type=int, default=32)
     parser.add_argument("--sample_baseline", action="store_true")
     parser.add_argument("--log_path", default=None, type=str)
     args = parser.parse_args()
@@ -41,14 +42,14 @@ def main():
             channels=(28 * 28, 256),
             n_vocab=args.n_vocab,
             n_latent=args.n_latent,
-            d_emb=4,
+            d_emb=args.d_emb,
             device=device,
         ),
         decoder=MLPDecoder(
             channels=(256, 28 * 28),
             n_vocab=args.n_vocab,
             n_latent=args.n_latent,
-            d_emb=4,
+            d_emb=args.d_emb,
             device=device,
         ),
         init_eta=args.init_eta,
