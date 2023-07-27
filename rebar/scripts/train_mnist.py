@@ -19,7 +19,7 @@ from rebar.rebar_model import RebarModel
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--lr", type=float, default=1e-4)
+    parser.add_argument("--lr", type=float, default=1e-3)
     parser.add_argument("--cv_lr", type=float, default=1e-2)
     parser.add_argument("--init_eta", type=float, default=1.0)
     parser.add_argument("--init_lam", type=float, default=0.1)
