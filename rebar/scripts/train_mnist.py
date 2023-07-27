@@ -81,7 +81,7 @@ def main():
                 batch.float(),
                 lambda x: F.binary_cross_entropy_with_logits(
                     x, batch, reduction="none"
-                ).mean(1),
+                ).sum(1),
                 entropy_coeff=-1.0,
             )
 
@@ -90,7 +90,7 @@ def main():
                 var_batch,
                 lambda x: F.binary_cross_entropy_with_logits(
                     x, var_batch, reduction="none"
-                ).mean(1),
+                ).sum(1),
             )
 
             for name, p in model.named_parameters():
