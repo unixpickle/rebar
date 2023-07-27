@@ -2,10 +2,11 @@ import argparse
 import json
 import warnings
 from collections import defaultdict
-from random import sample
 
 import numpy as np
 import torch
+import torch.nn as nn
+import torch.nn.functional as F
 from torch.optim import Adam
 from torch.utils.data import DataLoader
 from torchvision import datasets, transforms
@@ -69,15 +70,25 @@ def main():
     train_log = defaultdict(list)
     for epoch in range(10):
         losses = []
+        entropies = []
         variances = []
         for xs, _ys in tqdm(train_loader):
-            batch = xs.flatten(1).to(device)
+            batch = xs.flatten(1).float().to(device)
             opt.zero_grad()
-            hard_losses = model.backward(batch, lambda x: (x - batch).pow(2).mean(1))
+            loss_dict = model.backward(
+                batch.float(),
+                lambda x: F.binary_cross_entropy_with_logits(
+                    x, batch, reduction="none"
+                ).mean(1),
+                entropy_coeff=-1.0,
+            )
 
             var_batch = batch[torch.randperm(len(batch))[: args.variance_batch_size]]
             variance = model.variance_backward(
-                var_batch, lambda x: (x - var_batch).pow(2).mean(1)
+                var_batch,
+                lambda x: F.binary_cross_entropy_with_logits(
+                    x, var_batch, reduction="none"
+                ).mean(1),
             )
 
             for name, p in model.named_parameters():
@@ -85,26 +96,32 @@ def main():
                     warnings.warn(f"{name} grad is not finite")
 
             opt.step()
-            losses.append(hard_losses.tolist())
+            losses.extend(loss_dict["loss"].tolist())
+            entropies.extend(loss_dict["entropy"].tolist())
             variances.append(variance.item())
-            train_log["variance"].append(variances[-1])
-            train_log["loss"].append(np.mean(losses[-1]))
+            train_log["variance"].append(variance.item())
+            train_log["entropy"].append(loss_dict["entropy"].mean().item())
+            train_log["loss"].append(loss_dict["loss"].mean().item())
         variance = np.mean(variances)
-        loss = np.mean([x for y in losses for x in y])
-        print(f"{epoch=} {variance=} {loss=}")
+        entropy = np.mean(entropies)
+        loss = np.mean(losses)
+        print(f"{epoch=} {variance=} {entropy=} {loss=}")
 
     if args.log_path:
         np.savez(args.log_path, train_args=json.dumps(args.__dict__), **train_log)
 
 
 def data_loader(bs: int, train: bool) -> DataLoader:
-    transform = transforms.Compose(
-        [transforms.ToTensor(), transforms.Normalize((0.1307,), (0.3081,))]
-    )
+    transform = transforms.Compose([transforms.ToTensor(), Binarize()])
     dataset = datasets.MNIST(
         "../data", train=train, download=train, transform=transform
     )
     return DataLoader(dataset, batch_size=bs)
+
+
+class Binarize(nn.Module):
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        return x > torch.rand_like(x)
 
 
 if __name__ == "__main__":

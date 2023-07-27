@@ -1,6 +1,6 @@
 from contextlib import contextmanager
 from random import sample
-from typing import Callable, Iterable, List, Tuple
+from typing import Callable, Dict, Iterable, List, Optional, Tuple
 
 import torch
 import torch.nn as nn
@@ -46,12 +46,17 @@ class RebarModel(nn.Module):
         self,
         inputs: torch.Tensor,
         output_loss_fn: Callable[[torch.Tensor], torch.Tensor],
-    ) -> torch.Tensor:
+        entropy_coeff: Optional[float] = None,
+    ) -> Dict[str, torch.Tensor]:
         def loss_fn(x: torch.Tensor):
             return output_loss_fn(self.decoder(x))
 
         with toggle_grads(self.decoder.parameters(), False):
-            enc_out = self.encoder(inputs).logits
+            dist = self.encoder(inputs)
+            entropies = dist.entropy().flatten(1).sum(1)
+            if entropy_coeff:
+                entropies.mean().backward(retain_graph=True)
+            enc_out = dist.logits
             u1 = torch.rand_like(enc_out)
             u2 = torch.rand_like(enc_out)
 
@@ -82,7 +87,7 @@ class RebarModel(nn.Module):
         dec_loss = loss_fn(hard_out)
         dec_loss.mean().backward()
 
-        return losses
+        return dict(loss=losses.detach(), entropy=entropies.detach())
 
     def variance_backward(
         self,
