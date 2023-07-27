@@ -32,7 +32,11 @@ def control_variate_losses(
     z_tilde = conditional_gumbel_logits(u2, maxes, pre_logits)
     soft_out = loss_fn(soft_threshold(z, lam))
     soft_out_tilde = loss_fn(soft_threshold(z_tilde, lam))
-    return -soft_out_tilde.detach() * log_probs + soft_out - soft_out_tilde
+    if not lam.requires_grad:
+        soft_out_tilde_stop = soft_out_tilde.detach()
+    else:
+        soft_out_tilde_stop = loss_fn(soft_threshold(z_tilde.detach(), lam))
+    return -soft_out_tilde_stop * log_probs + soft_out - soft_out_tilde
 
 
 def reinforce_losses(
