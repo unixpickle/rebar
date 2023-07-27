@@ -24,6 +24,7 @@ def main():
     parser.add_argument("--init_eta", type=float, default=1.0)
     parser.add_argument("--init_lam", type=float, default=0.1)
     parser.add_argument("--batch_size", type=int, default=64)
+    parser.add_argument("--epochs", type=int, default=10)
     parser.add_argument("--variance_batch_size", type=int, default=4)
     parser.add_argument("--n_latent", type=int, default=32)
     parser.add_argument("--n_vocab", type=int, default=64)
@@ -69,7 +70,7 @@ def main():
         ],
     )
     train_log = defaultdict(list)
-    for epoch in range(10):
+    for epoch in range(args.epochs):
         losses = []
         entropies = []
         variances = []
