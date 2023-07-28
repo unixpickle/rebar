@@ -4,6 +4,8 @@ from typing import Callable, Dict, Iterable, List, Optional, Tuple
 
 import torch
 import torch.nn as nn
+from torch.distributions.categorical import Categorical
+from torch.distributions.kl import kl_divergence
 
 from .decoder import Decoder
 from .encoder import Encoder
@@ -46,16 +48,17 @@ class RebarModel(nn.Module):
         self,
         inputs: torch.Tensor,
         output_loss_fn: Callable[[torch.Tensor], torch.Tensor],
-        entropy_coeff: Optional[float] = None,
+        kl_coeff: Optional[float] = None,
     ) -> Dict[str, torch.Tensor]:
         def loss_fn(x: torch.Tensor):
             return output_loss_fn(self.decoder(x))
 
         with toggle_grads(self.decoder.parameters(), False):
             dist = self.encoder(inputs)
-            entropies = dist.entropy().flatten(1).sum(1)
-            if entropy_coeff:
-                (entropies * entropy_coeff).mean().backward(retain_graph=True)
+            prior = Categorical(logits=torch.zeros_like(dist.logits))
+            kls = kl_divergence(dist, prior).flatten(1).sum(1)
+            if kl_coeff:
+                (kls * kl_coeff).mean().backward(retain_graph=True)
             enc_out = dist.logits
             u1 = torch.rand_like(enc_out)
             u2 = torch.rand_like(enc_out)
@@ -87,7 +90,7 @@ class RebarModel(nn.Module):
         dec_loss = loss_fn(hard_out)
         dec_loss.mean().backward()
 
-        return dict(loss=losses.detach(), entropy=entropies.detach())
+        return dict(loss=losses.detach(), kl=kls.detach())
 
     def variance_backward(
         self,

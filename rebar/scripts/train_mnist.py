@@ -72,7 +72,7 @@ def main():
     train_log = defaultdict(list)
     for epoch in range(args.epochs):
         losses = []
-        entropies = []
+        kls = []
         variances = []
         for xs, _ys in tqdm(train_loader):
             batch = xs.flatten(1).float().to(device)
@@ -82,7 +82,7 @@ def main():
                 lambda x: F.binary_cross_entropy_with_logits(
                     x, batch, reduction="none"
                 ).sum(1),
-                entropy_coeff=-1.0,
+                kl_coeff=1.0,
             )
 
             var_batch = batch[torch.randperm(len(batch))[: args.variance_batch_size]]
@@ -99,15 +99,17 @@ def main():
 
             opt.step()
             losses.extend(loss_dict["loss"].tolist())
-            entropies.extend(loss_dict["entropy"].tolist())
+            kls.extend(loss_dict["kl"].tolist())
             variances.append(variance.item())
             train_log["variance"].append(variance.item())
-            train_log["entropy"].append(loss_dict["entropy"].mean().item())
+            train_log["kl"].append(loss_dict["kl"].mean().item())
             train_log["loss"].append(loss_dict["loss"].mean().item())
+            train_log["vlb"].append(train_log["kl"][-1] + train_log["loss"][-1])
         variance = np.mean(variances)
-        entropy = np.mean(entropies)
+        kl = np.mean(kls)
         loss = np.mean(losses)
-        print(f"{epoch=} {variance=} {entropy=} {loss=}")
+        vlb = loss + kl
+        print(f"{epoch=} {variance=} {kl=} {loss=} {vlb=}")
 
     if args.log_path:
         np.savez(args.log_path, train_args=json.dumps(args.__dict__), **train_log)
