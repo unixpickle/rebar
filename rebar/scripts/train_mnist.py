@@ -7,6 +7,7 @@ import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from PIL import Image
 from torch.optim import Adam
 from torch.utils.data import DataLoader
 from torchvision import datasets, transforms
@@ -14,6 +15,7 @@ from tqdm.auto import tqdm
 
 from rebar.decoder import MLPDecoder
 from rebar.encoder import MLPEncoder
+from rebar.rebar import gumbel, hard_threshold
 from rebar.rebar_model import RebarModel
 
 
@@ -31,6 +33,7 @@ def main():
     parser.add_argument("--d_emb", type=int, default=32)
     parser.add_argument("--sample_baseline", action="store_true")
     parser.add_argument("--log_path", default=None, type=str)
+    parser.add_argument("--samples_path", default=None, type=str)
     args = parser.parse_args()
 
     train_loader = data_loader(args.batch_size, train=True)
@@ -113,6 +116,29 @@ def main():
 
     if args.log_path:
         np.savez(args.log_path, train_args=json.dumps(args.__dict__), **train_log)
+
+    if args.samples_path:
+        n_grid = 8
+        dist = torch.distributions.Categorical(
+            logits=torch.zeros(n_grid**2, args.n_latent, args.n_vocab, device=device)
+        )
+        samples = model.decoder(
+            hard_threshold(gumbel(torch.rand_like(dist.logits), dist.logits))
+        )
+        images = (
+            (
+                samples.reshape(n_grid, n_grid, 28, 28, 1)
+                .sigmoid()
+                .permute(0, 2, 1, 3, 4)
+                .reshape(28 * n_grid, 28 * n_grid, 1)
+                * 255
+            )
+            .to(torch.uint8)
+            .cpu()
+            .repeat(1, 1, 3)
+            .numpy()
+        )
+        Image.fromarray(images).save(args.samples_path)
 
 
 def data_loader(bs: int, train: bool) -> DataLoader:
